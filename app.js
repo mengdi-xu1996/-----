@@ -81,6 +81,54 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Helper function for a weighted dice roll
+    function getWeightedDiceRoll() {
+        // Creates a weighted distribution where lower numbers are more likely.
+        // 1 appears 6 times, 6 appears once. Total items: 21
+        const distribution = [
+            1, 1, 1, 1, 1, 1, // ~28.6% chance
+            2, 2, 2, 2, 2,     // ~23.8% chance
+            3, 3, 3, 3,         // ~19.0% chance
+            4, 4, 4,             // ~14.3% chance
+            5, 5,                 // ~9.5% chance
+            6                    // ~4.8% chance
+        ];
+        const randomIndex = Math.floor(Math.random() * distribution.length);
+        return distribution[randomIndex];
+    }
+
+    // --- Test Simulation Function ---
+    function runTestSimulation() {
+        const results = [`--- 10-Round Test Simulation (${state.gameMode}) ---`];
+        const gameMode = state.gameMode;
+
+        if (!gameMode) {
+            alert("Please start a game (Truth or Dare) before running the test.");
+            return;
+        }
+
+        for (let i = 1; i <= 10; i++) {
+            const diceRoll = getWeightedDiceRoll();
+            const availableItems = state.data[gameMode].filter(item => item.difficulty === diceRoll);
+            
+            let roundResult;
+            if (availableItems.length > 0) {
+                const randomIndex = Math.floor(Math.random() * availableItems.length);
+                const selectedItem = availableItems[randomIndex];
+                roundResult = `Round ${i}: Dice[${diceRoll}] -> "${selectedItem.text}" (Difficulty: ${selectedItem.difficulty})`;
+            } else {
+                roundResult = `Round ${i}: Dice[${diceRoll}] -> No questions found for this difficulty.`;
+            }
+            results.push(roundResult);
+        }
+        
+        // Use a timeout to ensure the alert doesn't block rendering immediately
+        setTimeout(() => {
+            alert(results.join('\n\n'));
+        }, 0);
+    }
+
+
     // Game Logic
     function startGame(mode) {
         state.gameMode = mode;
@@ -96,16 +144,17 @@ document.addEventListener('DOMContentLoaded', () => {
         
         setTimeout(() => {
             gameElements.dice.classList.remove('spinning');
-            const result = Math.floor(Math.random() * 6) + 1;
+            const result = getWeightedDiceRoll(); // Use weighted roll instead of fair roll
             state.currentDifficulty = result;
             
+            // This is the fully corrected rotation map.
             const rotations = {
-                1: 'rotateX(0deg) rotateY(0deg)',       // front
-                2: 'rotateY(90deg) rotateX(0deg)',      // right
-                3: 'rotateX(-90deg) rotateY(0deg)',     // top
-                4: 'rotateX(90deg) rotateY(0deg)',      // bottom
-                5: 'rotateY(-90deg) rotateX(0deg)',     // left
-                6: 'rotateY(180deg) rotateX(0deg)',     // back
+                1: 'rotateY(0deg)',
+                2: 'rotateY(-90deg)',
+                3: 'rotateX(-90deg)',
+                4: 'rotateX(90deg)',
+                5: 'rotateY(90deg)',
+                6: 'rotateY(180deg)',
             };
             
             gameElements.dice.style.transform = `translateZ(-100px) ${rotations[result]}`;
@@ -123,8 +172,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let resultMessage;
         if (availableItems.length > 0) {
+            // Pick an item at a random index from the filtered list.
             const randomIndex = Math.floor(Math.random() * availableItems.length);
-            resultMessage = availableItems[randomIndex].text;
+            const selectedItem = availableItems[randomIndex];
+            // Permanently add the difficulty display as requested by the user.
+            resultMessage = `${selectedItem.text} (难度: ${selectedItem.difficulty})`;
         } else {
             resultMessage = `哎呀，没有难度为 ${state.currentDifficulty} 的问题/冒险了！换个难度试试或者去管理页添加一些吧。`;
         }
@@ -335,13 +387,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Keyboard shortcut for manage button
     function handleKeyPress(event) {
-        // We use event.key.toLowerCase() to catch both 'h' and 'H'
-        if (state.currentPage === 'mainMenu' && event.key.toLowerCase() === 'h') {
-            // Prevent toggling when user is typing in forms (if any were on main page)
-            if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
-                return;
+        // Prevent action when user is typing in forms
+        if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
+            return;
+        }
+
+        const key = event.key.toLowerCase();
+        if (key === 'h') {
+            if (state.currentPage === 'mainMenu') {
+                buttons.manageBtn.classList.toggle('hidden');
+            } else if (state.currentPage === 'game') {
+                runTestSimulation();
             }
-            buttons.manageBtn.classList.toggle('hidden');
         }
     }
 
