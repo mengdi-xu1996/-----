@@ -14,7 +14,9 @@ document.addEventListener('DOMContentLoaded', () => {
         backBtns: document.querySelectorAll('.back-btn'),
         saveItemBtn: document.getElementById('save-item-btn'),
         cancelEditBtn: document.getElementById('cancel-edit-btn'),
-        batchAddBtn: document.getElementById('batch-add-btn'),
+        bulkEditBtn: document.getElementById('bulk-edit-btn'),
+        saveBulkBtn: document.getElementById('save-bulk-btn'),
+        cancelBulkBtn: document.getElementById('cancel-bulk-btn'),
     };
 
     const gameElements = {
@@ -32,7 +34,9 @@ document.addEventListener('DOMContentLoaded', () => {
         editItemType: document.getElementById('edit-item-type'),
         itemText: document.getElementById('item-text'),
         itemDifficulty: document.getElementById('item-difficulty'),
-        batchFileInput: document.getElementById('batch-file-input'),
+        listView: document.getElementById('list-view'),
+        bulkEditView: document.getElementById('bulk-edit-view'),
+        bulkEditTextarea: document.getElementById('bulk-edit-textarea'),
     };
 
     // --- Game State & Data ---
@@ -42,6 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
         diceRolled: false,
         resultShown: false,
         currentDifficulty: null,
+        managementView: 'list', // 'list' or 'bulk'
         data: {
             truths: [],
             dares: [],
@@ -70,6 +75,10 @@ document.addEventListener('DOMContentLoaded', () => {
         Object.values(pages).forEach(page => page.classList.remove('active'));
         pages[pageName].classList.add('active');
         state.currentPage = pageName;
+        // When navigating to a page, give it focus to ensure it receives key events.
+        if (pages[pageName]) {
+            pages[pageName].focus({ preventScroll: true }); // preventScroll avoids jumping
+        }
     }
 
     // Game Logic
@@ -147,6 +156,76 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // Management Logic
+    function handleManagementTypeChange() {
+        if (state.managementView === 'list') {
+            renderManagementList();
+        } else {
+            populateBulkEditArea();
+        }
+    }
+
+    function toggleManagementView() {
+        state.managementView = state.managementView === 'list' ? 'bulk' : 'list';
+        renderManagementView();
+    }
+
+    function renderManagementView() {
+        if (state.managementView === 'list') {
+            managementElements.listView.classList.remove('hidden');
+            managementElements.bulkEditView.classList.add('hidden');
+            buttons.bulkEditBtn.textContent = '切换编辑模式';
+            renderManagementList();
+        } else {
+            managementElements.listView.classList.add('hidden');
+            managementElements.bulkEditView.classList.remove('hidden');
+            buttons.bulkEditBtn.textContent = '返回列表模式';
+            populateBulkEditArea();
+        }
+    }
+
+    function populateBulkEditArea() {
+        const type = managementElements.typeSelect.value;
+        const items = state.data[type];
+        const formattedText = items.map(item => `${item.text},${item.difficulty}`).join('\n');
+        managementElements.bulkEditTextarea.value = formattedText;
+    }
+
+    function saveBulkChanges() {
+        const type = managementElements.typeSelect.value;
+        const text = managementElements.bulkEditTextarea.value;
+        const lines = text.split('\n').filter(line => line.trim() !== '');
+        
+        const newItems = [];
+        let errorLines = [];
+
+        lines.forEach((line, index) => {
+            const parts = line.split(',');
+            if (parts.length >= 2) {
+                const difficulty = parseInt(parts.pop().trim());
+                const text = parts.join(',').trim();
+                if (text && !isNaN(difficulty) && difficulty >= 1 && difficulty <= 6) {
+                    newItems.push({ id: Date.now() + index, text, difficulty });
+                } else {
+                    errorLines.push(index + 1);
+                }
+            } else {
+                errorLines.push(index + 1);
+            }
+        });
+
+        if (errorLines.length > 0) {
+            alert(`保存失败！以下行格式错误，请检查：\n${errorLines.join(', ')}\n\n正确格式应为：内容,难度`);
+            return;
+        }
+
+        if (confirm(`确定要用这些内容完全覆盖当前的“${type === 'truths' ? '真心话' : '大冒险'}”题库吗？`)) {
+            state.data[type] = newItems;
+            saveData();
+            alert('保存成功！');
+            toggleManagementView();
+        }
+    }
+
     function renderManagementList() {
         const type = managementElements.typeSelect.value;
         const items = state.data[type];
@@ -210,44 +289,6 @@ document.addEventListener('DOMContentLoaded', () => {
         buttons.cancelEditBtn.classList.add('hidden');
     }
 
-    function handleBatchAdd() {
-        const file = managementElements.batchFileInput.files[0];
-        if (!file) {
-            alert('请先选择一个文件。');
-            return;
-        }
-
-        const reader = new FileReader();
-        reader.onload = function(event) {
-            const content = event.target.result;
-            const lines = content.split(/\r?\n/).filter(line => line.trim() !== '');
-            const type = managementElements.typeSelect.value;
-            let addedCount = 0;
-
-            lines.forEach(line => {
-                const parts = line.split(',');
-                if (parts.length >= 2) {
-                    const text = parts.slice(0, -1).join(',').trim();
-                    const difficulty = parseInt(parts[parts.length - 1].trim());
-                    if (text && !isNaN(difficulty) && difficulty >= 1 && difficulty <= 6) {
-                        state.data[type].push({ id: Date.now() + addedCount, text, difficulty });
-                        addedCount++;
-                    }
-                }
-            });
-
-            if (addedCount > 0) {
-                saveData();
-                renderManagementList();
-                alert(`成功导入 ${addedCount} 条记录！`);
-            } else {
-                alert('没有导入任何记录。请检查文件格式是否正确（例如：问题,难度）。');
-            }
-            managementElements.batchFileInput.value = ''; // Reset file input
-        };
-        reader.readAsText(file);
-    }
-    
     // --- Global App Object for inline event handlers ---
     window.app = {
         editItem: (type, id) => {
@@ -274,7 +315,7 @@ document.addEventListener('DOMContentLoaded', () => {
     buttons.truthBtn.addEventListener('click', () => startGame('truths'));
     buttons.dareBtn.addEventListener('click', () => startGame('dares'));
     buttons.manageBtn.addEventListener('click', () => {
-        renderManagementList();
+        renderManagementView();
         navigateTo('management');
     });
 
@@ -285,10 +326,12 @@ document.addEventListener('DOMContentLoaded', () => {
     gameElements.diceContainer.addEventListener('click', handleDiceClick);
     gameElements.resultDisplay.addEventListener('click', handleDiceClick);
 
-    managementElements.typeSelect.addEventListener('change', renderManagementList);
+    managementElements.typeSelect.addEventListener('change', handleManagementTypeChange);
     buttons.saveItemBtn.addEventListener('click', saveItem);
     buttons.cancelEditBtn.addEventListener('click', clearEditForm);
-    buttons.batchAddBtn.addEventListener('click', handleBatchAdd);
+    buttons.bulkEditBtn.addEventListener('click', toggleManagementView);
+    buttons.saveBulkBtn.addEventListener('click', saveBulkChanges);
+    buttons.cancelBulkBtn.addEventListener('click', toggleManagementView);
 
     // Keyboard shortcut for manage button
     function handleKeyPress(event) {

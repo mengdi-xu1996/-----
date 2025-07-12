@@ -9,7 +9,7 @@
 <body>
 
     <!-- 主菜单 -->
-    <div id="main-menu" class="page active">
+    <div id="main-menu" class="page active" tabindex="-1">
         <header>
             
             <button id="manage-btn" class="top-right-btn hidden">管理</button>
@@ -57,27 +57,33 @@
                     <option value="truths">真心话</option>
                     <option value="dares">大冒险</option>
                 </select>
+                <button id="bulk-edit-btn">切换编辑模式</button>
             </div>
 
-            <div id="items-list">
-                <!-- Items will be dynamically inserted here -->
-            </div>
-            
-            <div class="add-form-container">
-                <h3>添加/修改</h3>
-                <input type="hidden" id="edit-item-id">
-                <input type="hidden" id="edit-item-type">
-                <textarea id="item-text" placeholder="输入问题或冒险"></textarea>
-                <input type="number" id="item-difficulty" min="1" max="6" placeholder="难度 (1-6)">
-                <button id="save-item-btn">保存</button>
-                <button id="cancel-edit-btn" class="hidden">取消</button>
+            <div id="list-view">
+                <div id="items-list">
+                    <!-- Items will be dynamically inserted here -->
+                </div>
+                
+                <div class="add-form-container">
+                    <h3>添加/修改</h3>
+                    <input type="hidden" id="edit-item-id">
+                    <input type="hidden" id="edit-item-type">
+                    <textarea id="item-text" placeholder="输入问题或冒险"></textarea>
+                    <input type="number" id="item-difficulty" min="1" max="6" placeholder="难度 (1-6)">
+                    <button id="save-item-btn">保存</button>
+                    <button id="cancel-edit-btn" class="hidden">取消</button>
+                </div>
             </div>
 
-            <div class="batch-add-container">
-                <h3>批量添加</h3>
-                <p>选择一个文件 (txt, csv)，每行格式为：问题,难度</p>
-                <input type="file" id="batch-file-input" accept=".txt,.csv">
-                <button id="batch-add-btn">批量导入</button>
+            <div id="bulk-edit-view" class="hidden">
+                <h3>编辑模式</h3>
+                <p>每行一个条目, 格式: <code>内容,难度</code>。直接修改下方的文本, 然后保存。</p>
+                <textarea id="bulk-edit-textarea"></textarea>
+                <div class="bulk-edit-actions">
+                    <button id="save-bulk-btn">保存更改</button>
+                    <button id="cancel-bulk-btn">取消</button>
+                </div>
             </div>
         </div>
     </div>
