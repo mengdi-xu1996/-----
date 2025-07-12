@@ -291,19 +291,30 @@ document.addEventListener('DOMContentLoaded', () => {
     buttons.batchAddBtn.addEventListener('click', handleBatchAdd);
 
     // Keyboard shortcut for manage button
-    document.addEventListener('keydown', (event) => {
+    function handleKeyPress(event) {
+        console.log('Key pressed:', event.key, '| Current page:', state.currentPage);
+
         // We use event.key.toLowerCase() to catch both 'h' and 'H'
         if (state.currentPage === 'mainMenu' && event.key.toLowerCase() === 'h') {
+            console.log('H key detected on main menu.');
+            
             // Prevent toggling when user is typing in forms (if any were on main page)
             if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
+                console.log('Toggle prevented: typing in an input field.');
                 return;
             }
+            console.log('Toggling manage button visibility.');
             buttons.manageBtn.classList.toggle('hidden');
         }
-    });
+    }
+
+    document.addEventListener('keydown', handleKeyPress);
+    // Also attach to window for better event capturing in some environments
+    window.addEventListener('keydown', handleKeyPress);
 
 
     // --- Initialization ---
     loadData();
+    console.log('Game script initialized.');
     navigateTo('mainMenu');
 }); 
